@@ -29,18 +29,22 @@ More information about PID Controller: http://en.wikipedia.org/wiki/PID_controll
 """
 import time
 
+import numpy as np
+
 class PID:
     """PID Controller
     """
 
-    def __init__(self, P=0.2, I=0.0, D=0.0):
+    def __init__(self, timer, P=0.2, I=0.0, D=0.0):
 
         self.Kp = P
         self.Ki = I
         self.Kd = D
 
+        self.timer = timer
+
         self.sample_time = 0.00
-        self.current_time = 0.00
+        self.current_time = timer.time
         self.last_time = self.current_time
 
         self.clear()
@@ -63,9 +67,6 @@ class PID:
     def update_point(self, SetPoint):
         self.SetPoint = SetPoint
 	
-    def update_time(self, current_time):
-        self.cureent_time = current_time
-
     def update(self, feedback_value):
         """Calculates PID value for given reference feedback
         .. math::
@@ -76,7 +77,7 @@ class PID:
         """
         error = self.SetPoint - feedback_value
 
-        self.current_time = time.time()
+        self.current_time = self.timer.time
         delta_time = self.current_time - self.last_time
         delta_error = error - self.last_error
 
@@ -130,27 +131,30 @@ class PID:
         self.sample_time = sample_time
 
 class Force_PID:
-    def __init__(self, P=0.2, I=0.0, D=0.0) -> None:
-        self.x_pid = PID(P, I, D)
-        self.y_pid = PID(P, I, D)
-        self.z_pid = PID(P, I, D)
+    def __init__(self, timer, P=0.2, I=0.0, D=0.0) -> None:
+        self.x_pid = PID(timer, P, I, D)
+        self.y_pid = PID(timer, P, I, D)
+        self.z_pid = PID(timer, P, I, D)
     
     def clear(self):
         self.x_pid.clear()
         self.y_pid.clear()
         self.z_pid.clear()
     
-    def set_force(self, x, y, z):
+    def set_force(self, F):
+        [x, y, z] = F
         self.x_pid.update_point(x)
         self.y_pid.update_point(y)
         self.z_pid.update_point(z)
     
-    def update_time(self, current_time):
-        self.x_pid.update_time(current_time)
-        self.y_pid.update_time(current_time)
-        self.z_pid.update_time(current_time)
-    
-    def update(self, x, y, z):
+    def update(self, F):
+        [x, y, z] = F
         self.x_pid.update(x)
         self.y_pid.update(y)
         self.z_pid.update(z)
+    
+    def get_fix_force(self):
+        x = self.x_pid.output
+        y = self.y_pid.output
+        z = self.z_pid.output
+        return np.float128([x, y, z])

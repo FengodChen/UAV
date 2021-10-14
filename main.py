@@ -29,5 +29,3 @@ while init_time <= max_time:
     uav1.update_force([0, 0, 0])
     uav2.update_force([0, 0, 0])
     uav3.update_force([0, 0, 0])
-
-    print(uav0.pos)

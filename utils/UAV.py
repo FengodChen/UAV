@@ -36,9 +36,9 @@ class UAV:
 		self.last_time, self.current_time = self.current_time, self.timer.time
 		dt = self.current_time - self.last_time
 		a = force / self.weight
-		self.pos = self.speed * dt + 0.5 * a * (dt**2)
+		self.pos = self.pos + self.speed * dt + 0.5 * a * (dt**2)
 		self.speed = self.speed + a * dt
-	
+
 	def update_force(self, rec_force):
 		"""
 		force: The force that the UAV recived(x, y, z)(N)
@@ -48,7 +48,7 @@ class UAV:
 		all_force = need_force + rec_force
 		self.pid.set_force(need_force)
 		self.pid.update(all_force)
-		true_force = self.pid.get_fix_force()
+		true_force = need_force + self.pid.get_fix_force()
 		self.force = true_force
 	
 	def post(self):

@@ -57,17 +57,16 @@ class UAV:
 		info["speed"] = self.speed
 		self.poster.pos(info)
 	
-	def get_virtual_gravitation(self, alpha=0.1, min_distance=0.0001):
+	def get_distance(self):
 		info = self.reciver.rec(self.leader_id)
 		leader_pos  = info["pos"]
 		except_pos = leader_pos + self.rel_pos
 
 		vec = except_pos - self.pos
 		distance = np.sqrt(vec * vec).sum()
-		if (distance > min_distance):
-			vec = vec / distance
-			gravitation = alpha * self.weight / (distance * distance)
-			return vec * gravitation
-		else:
-			return np.float128([0, 0, 0])
+		return (vec, distance)
+	
+	def get_virtual_gravitation(self, alpha=0.1):
+		(vec, distance) = self.get_distance()
+		return alpha * vec * distance
 	

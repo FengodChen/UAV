@@ -40,7 +40,7 @@ class PID:
         self.Kd = D
 
         self.sample_time = 0.00
-        self.current_time = time.time()
+        self.current_time = 0.00
         self.last_time = self.current_time
 
         self.clear()
@@ -59,6 +59,12 @@ class PID:
         self.windup_guard = 20.0
 
         self.output = 0.0
+	
+    def update_point(self, SetPoint):
+        self.SetPoint = SetPoint
+	
+    def update_time(self, current_time):
+        self.cureent_time = current_time
 
     def update(self, feedback_value):
         """Calculates PID value for given reference feedback
@@ -122,3 +128,29 @@ class PID:
         Based on a pre-determined sampe time, the PID decides if it should compute or return immediately.
         """
         self.sample_time = sample_time
+
+class Force_PID:
+    def __init__(self, P=0.2, I=0.0, D=0.0) -> None:
+        self.x_pid = PID(P, I, D)
+        self.y_pid = PID(P, I, D)
+        self.z_pid = PID(P, I, D)
+    
+    def clear(self):
+        self.x_pid.clear()
+        self.y_pid.clear()
+        self.z_pid.clear()
+    
+    def set_force(self, x, y, z):
+        self.x_pid.update_point(x)
+        self.y_pid.update_point(y)
+        self.z_pid.update_point(z)
+    
+    def update_time(self, current_time):
+        self.x_pid.update_time(current_time)
+        self.y_pid.update_time(current_time)
+        self.z_pid.update_time(current_time)
+    
+    def update(self, x, y, z):
+        self.x_pid.update(x)
+        self.y_pid.update(y)
+        self.z_pid.update(z)

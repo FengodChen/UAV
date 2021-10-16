@@ -35,7 +35,7 @@ class PID:
     """PID Controller
     """
 
-    def __init__(self, timer, P=0.2, I=0.0, D=0.0):
+    def __init__(self, timer, sample_time = 0.001, P=0.2, I=0.0, D=0.0):
 
         self.Kp = P
         self.Ki = I
@@ -43,7 +43,7 @@ class PID:
 
         self.timer = timer
 
-        self.sample_time = 0.00
+        self.sample_time = sample_time
         self.current_time = timer.time
         self.last_time = self.current_time
 
@@ -130,30 +130,28 @@ class PID:
         """
         self.sample_time = sample_time
 
-class Force_PID:
-    def __init__(self, timer, P=0.2, I=0.0, D=0.0) -> None:
-        self.x_pid = PID(timer, P, I, D)
-        self.y_pid = PID(timer, P, I, D)
-        self.z_pid = PID(timer, P, I, D)
+class UAV_PID:
+    def __init__(self, timer, sample_time=0.001, P=0.2, I=0.0, D=0.0) -> None:
+        self.x_pid = PID(timer, sample_time, P, I, D)
+        self.y_pid = PID(timer, sample_time, P, I, D)
+        self.z_pid = PID(timer, sample_time, P, I, D)
     
     def clear(self):
         self.x_pid.clear()
         self.y_pid.clear()
         self.z_pid.clear()
     
-    def set_force(self, F):
-        [x, y, z] = F
+    def set_true(self, M):
+        [x, y, z] = M
         self.x_pid.update_point(x)
         self.y_pid.update_point(y)
         self.z_pid.update_point(z)
     
-    def update(self, F):
-        [x, y, z] = F
+    def get_fix(self, M):
+        [x, y, z] = M
         self.x_pid.update(x)
         self.y_pid.update(y)
         self.z_pid.update(z)
-    
-    def get_fix_force(self):
         x = self.x_pid.output
         y = self.y_pid.output
         z = self.z_pid.output

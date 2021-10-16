@@ -13,16 +13,16 @@ t = []
 now_value = random.random()*2 - 1
 
 for i in range(1, 101):
-	i = i / 100
-	set_value = (random.random() - 0.5) * 0.01
-	pid.update_point(set_value)
-	pid.update_time(i)
-	pid.update(now_value)
-	now_value_list.append(now_value)
-	set_value_list.append(set_value)
-	pid_value_list.append(pid.output)
-	t.append(i)
-	now_value = now_value + pid.output
+    i = i / 100
+    set_value = (random.random() - 0.5) * 0.01
+    pid.update_point(set_value)
+    pid.update_time(i)
+    pid.update(now_value)
+    now_value_list.append(now_value)
+    set_value_list.append(set_value)
+    pid_value_list.append(pid.output)
+    t.append(i)
+    now_value = now_value + pid.output
 
 now_value_list = np.array(now_value_list)
 pid_value_list = np.array(pid_value_list)

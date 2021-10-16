@@ -1,72 +1,79 @@
-from utils import Communication
 from utils import PID
-from utils import Timer
 import numpy as np
 
 class UAV:
-	def __init__(self, timer, env, id, leader_id, weight = 15, init_pos = [0.0, 0.0, 0.0], init_speed = [0.0, 0.0, 0.0], relative_pos = [0.0, 0.0, 0.0]) -> None:
-		'''
-		timer: The Global Timer
-		id: UAV's ID
-		weight: UAV's weight(kg)
-		init_post: UAV's initialize position(x, y, z)(m)
-		relative_pos: UAV's relative position with leader UAV(x, y, z)(m)
-		init_speed: UAV's initialize speed(x, y, z)(m/s)
-		'''
-		self.id = id
-		self.leader_id = leader_id
-		self.timer = timer
-		self.weight = weight
+    def __init__(self, timer, id, pid_sample_time = 0.001, weight = 15, pos = [0, 0, 0], speed = [0, 0, 0]) -> None:
+        '''
+        timer: The Global Timer
+        id: UAV's ID
+        weight: UAV's weight(kg)
+        init_post: UAV's initialize position(x, y, z)(m)
+        relative_pos: UAV's relative position with leader UAV(x, y, z)(m)
+        init_speed: UAV's initialize speed(x, y, z)(m/s)
+        '''
+        self.id = id
+        self.timer = timer
+        self.weight = weight
 
-		self.poster = Communication.Poster(timer, id, env)
-		self.reciver = Communication.Reciver(timer, id, env)
-		self.pid = PID.Force_PID(timer)
+        self.s_pid = PID.UAV_PID(timer, pid_sample_time)
+        self.v_pid = PID.UAV_PID(timer, pid_sample_time)
+        self.pid_sample_time = pid_sample_time
 
-		# (x, y, z)
-		self.pos = np.float128(init_pos)
-		self.speed = np.float128(init_speed)
-		self.rel_pos = np.float128(relative_pos)
+        self.s_pid.clear()
+        self.v_pid.clear()
 
-		self.current_time = timer.time
-		self.last_time = self.current_time
-		self.force = np.float128([0, 0, 0])
-	
-	def update_status(self):
-		force = self.force
-		self.last_time, self.current_time = self.current_time, self.timer.time
-		dt = self.current_time - self.last_time
-		a = force / self.weight
-		self.pos = self.pos + self.speed * dt + 0.5 * a * (dt**2)
-		self.speed = self.speed + a * dt
+        self.pos = np.float128(pos)
+        self.speed = np.float128(speed)
+        self.force = np.float128([0, 0, 0])
 
-	def update_force(self, rec_force):
-		"""
-		force: The force that the UAV recived(x, y, z)(N)
-		"""
-		rec_force = np.float128(rec_force)
-		need_force = self.get_virtual_gravitation()
-		all_force = need_force + rec_force
-		self.pid.set_force(need_force)
-		self.pid.update(all_force)
-		true_force = need_force + self.pid.get_fix_force()
-		self.force = true_force
-	
-	def post(self):
-		info = {}
-		info["pos"] = self.pos
-		info["speed"] = self.speed
-		self.poster.pos(info)
-	
-	def get_distance(self):
-		info = self.reciver.rec(self.leader_id)
-		leader_pos  = info["pos"]
-		except_pos = leader_pos + self.rel_pos
+        self.current_time = timer.time
+        self.last_time = self.current_time
+    
+    def update_status(self, outside_force):
+        outside_force = np.float128(outside_force)
+        force = self.force + outside_force
+        self.last_time, self.current_time = self.current_time, self.timer.time
+        dt = self.current_time - self.last_time
+        a = force / self.weight
+        self.pos = self.pos + self.speed * dt + 0.5 * a * (dt**2)
+        self.speed = self.speed + a * dt
 
-		vec = except_pos - self.pos
-		distance = np.sqrt(vec * vec).sum()
-		return (vec, distance)
-	
-	def get_virtual_gravitation(self, alpha=0.1):
-		(vec, distance) = self.get_distance()
-		return alpha * vec * distance
-	
+class UAV_Leader(UAV):
+    def __init__(self, timer, id, pid_sample_time, weight = 15, init_pos = [0.0, 0.0, 0.0], init_speed = [0.0, 0.0, 0.0]) -> None:
+        '''
+        timer: The Global Timer
+        id: UAV's ID
+        weight: UAV's weight(kg)
+        init_post: UAV's initialize position(x, y, z)(m)
+        relative_pos: UAV's relative position with leader UAV(x, y, z)(m)
+        init_speed: UAV's initialize speed(x, y, z)(m/s)
+        '''
+        super().__init__(timer, id, pid_sample_time, weight, init_pos, init_speed)
+    
+    def get_status(self):
+        return (self.pos, self.speed)
+        
+
+class UAV_Follower(UAV):
+    def __init__(self, timer, id, pid_sample_time, weight = 15, relative_pos = [0.0, 0.0, 0.0], relative_speed = [0.0, 0.0, 0.0], true_pos = [0.0, 0.0, 0.0], true_speed = [0.0, 0.0, 0.0]) -> None:
+       super().__init__(timer, id, pid_sample_time, weight, relative_pos, relative_speed)
+       self.true_pos = np.float128(true_pos)
+       self.true_speed = np.float128(true_speed)
+       self.s_pid.set_true(self.true_pos)
+       self.v_pid.set_true(self.true_speed)
+    
+    def fix_force(self):
+        ds = self.s_pid.get_fix(self.pos)
+        dv = self.s_pid.get_fix(self.speed)
+        t = self.pid_sample_time
+        self.force = self.weight * ((2 * ds) / (t**2) + dv / t)
+    
+    def get_delta_pos(self):
+        vec = self.true_pos - self.pos
+        distance = np.sqrt((vec * vec)).sum()
+        return (vec, distance)
+    
+    def get_delta_speed(self):
+        vec = self.true_speed - self.speed
+        distance = np.sqrt((vec * vec)).sum()
+        return (vec, distance)

@@ -16,11 +16,9 @@ class UAV:
         self.weight = weight
 
         self.s_pid = PID.UAV_PID(timer, pid_sample_time)
-        self.v_pid = PID.UAV_PID(timer, pid_sample_time)
         self.pid_sample_time = pid_sample_time
 
         self.s_pid.clear()
-        self.v_pid.clear()
 
         self.pos = np.float128(pos)
         self.speed = np.float128(speed)
@@ -60,13 +58,13 @@ class UAV_Follower(UAV):
        self.true_pos = np.float128(true_pos)
        self.true_speed = np.float128(true_speed)
        self.s_pid.set_true(self.true_pos)
-       self.v_pid.set_true(self.true_speed)
     
     def fix_force(self):
         ds = self.s_pid.get_fix(self.pos)
-        dv = self.s_pid.get_fix(self.speed)
         t = self.pid_sample_time
-        self.force = self.weight * ((2 * ds) / (t**2) + dv / t)
+        m = self.weight
+        v0 = self.speed
+        self.force = 2 * m * (ds - v0 * t) / (t**2)
     
     def get_delta_pos(self):
         vec = self.true_pos - self.pos
